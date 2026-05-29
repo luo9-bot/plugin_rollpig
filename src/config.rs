@@ -34,11 +34,22 @@ fn config_path() -> PathBuf {
         .join("config.yaml")
 }
 
-/// 加载配置，文件不存在或解析失败时使用默认值
+/// 加载配置，文件不存在时自动创建默认配置文件
 pub fn load_config() -> RollpigConfig {
     let path = config_path();
     match std::fs::read_to_string(&path) {
         Ok(content) => serde_yaml::from_str(&content).unwrap_or_default(),
-        Err(_) => RollpigConfig::default(),
+        Err(_) => {
+            let default_config = RollpigConfig::default();
+            // 创建目录（如果不存在）
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            // 写入默认配置
+            if let Ok(content) = serde_yaml::to_string(&default_config) {
+                let _ = std::fs::write(&path, content);
+            }
+            default_config
+        }
     }
 }

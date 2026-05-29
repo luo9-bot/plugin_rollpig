@@ -26,8 +26,10 @@ fn handle_command(user_id: u64, group_id: u64, msg: &str, is_group: bool) {
         }
     };
 
-    // 随机小猪
-    if let Some(cmd) = Command::parse(msg, "随机小猪", PrefixMode::None) {
+    // 随机小猪（支持多个别名）
+    let pig_aliases = ["随机小猪", "随机猪猪", "来点猪猪", "来点小猪"];
+    let pig_cmd = pig_aliases.iter().find_map(|alias| Command::parse(msg, alias, PrefixMode::None));
+    if let Some(cmd) = pig_cmd {
         let count = cmd
             .arg_at(0)
             .and_then(|s| s.parse::<usize>().ok())
@@ -42,7 +44,6 @@ fn handle_command(user_id: u64, group_id: u64, msg: &str, is_group: bool) {
         }
 
         for (url, title) in &images {
-            send(Msg::txt(format!("🐷 {}", title)).build());
             send(Msg::image(url).build());
         }
     }
