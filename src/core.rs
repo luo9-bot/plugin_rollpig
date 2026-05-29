@@ -6,15 +6,9 @@ use crate::commands::{handle_private_msg, handle_group_msg};
 #[unsafe(no_mangle)]
 pub extern "C" fn plugin_main() {
     let msg_sub = Bus::topic("luo9_message").subscribe().unwrap();
-    let event_sub = Bus::topic("luo9_meta_event").subscribe().unwrap();
-    let notice_sub = Bus::topic("luo9_notice").subscribe().unwrap();
-    let task_sub = Bus::topic("luo9_task").subscribe().unwrap();
     let ver_sub = Bus::topic("luo9_version").subscribe().unwrap();
 
     let msg_topic = Bus::topic("luo9_message");
-    let event_topic = Bus::topic("luo9_meta_event");
-    let notice_topic = Bus::topic("luo9_notice");
-    let task_topic = Bus::topic("luo9_task");
     let ver_topic = Bus::topic("luo9_version");
 
     loop {
@@ -31,16 +25,6 @@ pub extern "C" fn plugin_main() {
                 }
             }
         }
-
-        if let Some(json) = event_topic.pop(event_sub) {
-            if let Some(BusPayload::MetaEvent(_ev)) = BusPayload::parse(&json) {}
-        }
-
-        if let Some(json) = notice_topic.pop(notice_sub) {
-            if let Some(BusPayload::Notice(_notice)) = BusPayload::parse(&json) {}
-        }
-
-        if let Some(json) = task_topic.pop(task_sub) {}
 
         if let Some(json) = ver_topic.pop(ver_sub) {
             if luo9_sdk::version::is_version_query(&json) {
