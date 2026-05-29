@@ -2,9 +2,13 @@ use luo9_sdk::bus::Bus;
 use luo9_sdk::payload::*;
 
 use crate::commands::{handle_private_msg, handle_group_msg};
+use crate::config::load_config;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn plugin_main() {
+    // 初始化时加载配置，确保默认配置文件被创建
+    let _config = load_config();
+
     let msg_sub = Bus::topic("luo9_message").subscribe().unwrap();
     let ver_sub = Bus::topic("luo9_version").subscribe().unwrap();
 
