@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 /// 插件配置
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Deserialize, serde::Serialize)]
 pub struct RollpigConfig {
     /// Vercel API 地址
     pub api_base: String,

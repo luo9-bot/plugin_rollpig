@@ -43,7 +43,7 @@ fn handle_command(user_id: u64, group_id: u64, msg: &str, is_group: bool) {
             return;
         }
 
-        for (url, title) in &images {
+        for (url, _title) in &images {
             send(Msg::image(url).build());
         }
     }
