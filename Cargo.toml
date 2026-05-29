@@ -1,0 +1,21 @@
+[package]
+name = "plugin_rollpig"
+version = "0.1.0"
+edition = "2024"
+description = "今天是什么小猪 - 抽取属于自己的小猪，支持HTML渲染"
+
+[package.metadata]
+tags = ["fun", "random"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+luo9_sdk = "0.7.1"
+serde_json = "1.0"
+rand = "0.8"
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+tokio = { version = "1", features = ["full"] }
+image = "0.24"
+imageproc = "0.23"
+rusttype = "0.9"
