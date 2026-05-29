@@ -1,0 +1,9 @@
+# Vercel API 地址
+api_base: "https://your-vercel-app.vercel.app"
+
+# GitHub Raw 镜像前缀列表（依次尝试，直到成功）
+mirrors:
+  - "https://github.chenc.dev/"
+  - "https://ghproxy.cfd/"
+  - "https://ghproxy.cc/"
+  - "https://gh-proxy.net/"

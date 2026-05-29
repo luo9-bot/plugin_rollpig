@@ -1,38 +1,62 @@
-//! API模块 - 对应原始utils.py中的PigHub API
+//! API模块 - 从 Vercel API 获取随机猪图，返回镜像 URL
 
-use reqwest;
-use crate::models::{PighubPig, Pigsonality, get_pigsonalities};
+use reqwest::blocking::Client;
+use serde::Deserialize;
+use std::sync::LazyLock;
 
-/// 从PigHub随机获取小猪 (对应原始random_pigs)
-pub async fn fetch_random_pigs(count: usize) -> Vec<PighubPig> {
-    match reqwest::get("https://pighub.top/api/all-images").await {
-        Ok(resp) => {
-            match resp.json::<Vec<PighubPig>>().await {
-                Ok(mut pigs) => {
-                    let mut rng = rand::thread_rng();
-                    let mut result = Vec::new();
-                    for _ in 0..count.min(pigs.len()) {
-                        let index = rng.gen_range(0..pigs.len());
-                        result.push(pigs.remove(index));
-                    }
-                    result
-                },
-                Err(_) => Vec::new(),
-            }
-        },
-        Err(_) => Vec::new(),
+use crate::config::{load_config, RollpigConfig};
+
+static CONFIG: LazyLock<RollpigConfig> = LazyLock::new(load_config);
+
+static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap()
+});
+
+#[derive(Deserialize)]
+struct ApiImage {
+    title: String,
+    url: String,
+}
+
+#[derive(Deserialize)]
+struct ApiMultiResponse {
+    images: Vec<ApiImage>,
+}
+
+/// 将 GitHub Raw URL 转为镜像 URL（取第一个镜像）
+fn mirror_url(github_url: &str) -> String {
+    if let Some(mirror) = CONFIG.mirrors.first() {
+        format!("{}{}", mirror, github_url)
+    } else {
+        github_url.to_string()
     }
 }
 
-/// 根据ID获取小猪
-pub fn get_pigsonality_by_id(id: &str) -> Option<Pigsonality> {
-    get_pigsonalities().into_iter().find(|p| p.id == id)
-}
+/// 获取随机猪图（返回镜像 URL + 标题）
+pub fn fetch_random_pig_images(count: usize) -> Vec<(String, String)> {
+    let count = count.clamp(1, 20);
+    let api_url = format!("{}/api/random-pig?count={}", CONFIG.api_base, count);
 
-/// 根据关键词查找小猪
-pub fn search_pigsonalities(keyword: &str) -> Vec<Pigsonality> {
-    let keyword_lower = keyword.to_lowercase();
-    get_pigsonalities().into_iter()
-        .filter(|p| p.name.to_lowercase().contains(&keyword_lower) || p.id == keyword)
+    let images: Vec<ApiImage> = match HTTP_CLIENT.get(&api_url).send() {
+        Ok(resp) if resp.status().is_success() => {
+            if count == 1 {
+                resp.json::<ApiImage>()
+                    .map(|img| vec![img])
+                    .unwrap_or_default()
+            } else {
+                resp.json::<ApiMultiResponse>()
+                    .map(|r| r.images)
+                    .unwrap_or_default()
+            }
+        }
+        _ => return Vec::new(),
+    };
+
+    images
+        .into_iter()
+        .map(|img| (mirror_url(&img.url), img.title))
         .collect()
 }
