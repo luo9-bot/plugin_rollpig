@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::sync::Mutex;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use luo9_sdk::Bot;
 use luo9_sdk::Msg;
@@ -15,6 +15,37 @@ const COOLDOWN_SECS: u64 = 5;
 
 /// 用户冷却记录：user_id -> 上次触发时间
 static COOLDOWN_MAP: Mutex<Option<HashMap<u64, Instant>>> = Mutex::new(None);
+
+/// 解析相对路径为绝对路径
+fn resolve(rel: &str) -> String {
+    std::env::current_dir()
+        .unwrap_or_default()
+        .join(rel)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+/// 下载图片到临时文件，返回本地绝对路径
+fn download_to_temp(url: &str) -> Option<String> {
+    let dir = resolve("data/plugin_rollpig/temp");
+    std::fs::create_dir_all(&dir).ok()?;
+
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()?
+        .as_millis();
+
+    // 从 URL 推断扩展名
+    let ext = if url.contains(".png") { "png" } else { "jpg" };
+    let filename = format!("{}.{}", timestamp, ext);
+    let filepath = format!("{}/{}", dir, filename);
+
+    let resp = reqwest::blocking::get(url).ok()?;
+    let bytes = resp.bytes().ok()?;
+    std::fs::write(&filepath, &bytes).ok()?;
+
+    Some(filepath)
+}
 
 /// 检查用户是否在冷却期内，不在则更新时间戳并返回 true
 fn check_cooldown(user_id: u64) -> bool {
@@ -75,7 +106,16 @@ fn handle_command(user_id: u64, group_id: u64, msg: &str, is_group: bool) {
         }
 
         for (url, _title) in &images {
-            send(Msg::image(url).build());
+            // 下载到临时文件再发送
+            if let Some(filepath) = download_to_temp(url) {
+                send(Msg::image(&filepath).build());
+                // 延迟删除临时文件（等待发送完成）
+                let path = filepath.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    let _ = std::fs::remove_file(&path);
+                });
+            }
         }
     }
 }
